@@ -197,5 +197,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Groq](https://groq.com/) for fast LLM inference
 - [ChromaDB](https://www.trychroma.com/) for the vector database
 - [Streamlit](https://streamlit.io/) for the web UI framework
-- [Hugging Face](https://huggingface.co/) for the embedding models#   N e w _ C h a t _ B o t  
+- [Hugging Face](https://huggingface.co/) for the embedding models#   N e w _ C h a t _ B o t 
+ 
  

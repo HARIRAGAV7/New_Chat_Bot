@@ -8,7 +8,10 @@ from utils.helpers import initialize_session_state
 from core.vector_store import VectorStoreManager
 from core.llm import get_llm
 from utils.file_handler import save_uploaded_files, load_and_split_files
-from config.settings import DEFAULT_MODEL
+from config.settings import (
+    DEFAULT_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
+    MAX_RETRIEVAL_DOCS, TEMPERATURE,
+)
 
 # Load environment variables
 load_dotenv()
@@ -17,78 +20,79 @@ def main():
     """
     Main function to run the RAG chatbot application.
     """
-    # Set page config
+    # ── Page config ───────────────────────────────────────────────────
     st.set_page_config(
         layout="wide",
-        page_title="RAG Chatbot",
+        page_title="RAG Chatbot — Intelligent Document Assistant",
         page_icon="🧠",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        menu_items={
+            "Get Help": None,
+            "Report a bug": None,
+            "About": "**RAG Chatbot** — Powered by LangChain, ChromaDB & Groq.",
+        },
     )
-    
-    # Inject custom CSS
+
+    # ── Inject custom CSS (dark professional theme) ───────────────────
     inject_custom_css()
-    
-    # Initialize session state
+
+    # ── Session state init ────────────────────────────────────────────
     initialize_session_state()
-    
-    # Render sidebar and get settings
-    sidebar_settings = render_sidebar()
-    
-    # Handle file upload and processing
-    uploaded_files = sidebar_settings.get("uploaded_files")
+
+    # ── Sidebar ───────────────────────────────────────────────────────
+    render_sidebar()
+
+    # ── File processing ───────────────────────────────────────────────
+    uploaded_files = st.session_state.get("uploaded_files_to_process")
     if uploaded_files:
-        with st.spinner("Processing documents..."):
-            # Save uploaded files
+        with st.spinner("⚙️ Processing documents…"):
             file_paths = save_uploaded_files(uploaded_files)
-            
+
             if file_paths:
-                # Load and split files
                 all_docs, chunks = load_and_split_files(file_paths)
-                
+
                 if chunks:
-                    # Initialize vector store and add documents
                     vector_store = VectorStoreManager()
                     vector_store.add_documents(chunks)
-                    
-                    # Update session state
-                    st.session_state.vector_store = vector_store
-                    st.session_state.all_docs = all_docs
-                    st.session_state.documents_indexed = True
-                    
-                    # Show success message
-                    st.success(f"Successfully processed {len(uploaded_files)} file(s) into {len(chunks)} chunks!")
+
+                    st.session_state.vector_store       = vector_store
+                    st.session_state.all_docs           = all_docs
+                    st.session_state.documents_indexed  = True
+
+                    st.success(
+                        f"✅ Successfully processed **{len(uploaded_files)}** file(s) "
+                        f"into **{len(chunks)}** chunks!"
+                    )
                 else:
-                    st.error("No content could be extracted from the uploaded files.")
+                    st.error("❌ No content could be extracted from the uploaded files.")
             else:
-                st.info("No new files to process (all files were duplicates).")
-        
-        # Clear the uploaded files from session state to avoid reprocessing on rerun
+                st.info("ℹ️ No new files to process — all files were already indexed.")
+
         if 'uploaded_files_to_process' in st.session_state:
             del st.session_state['uploaded_files_to_process']
         st.rerun()
-    
-    # Initialize LLM if not already done - uses DEFAULT_MODEL from config/settings.py
-    if st.session_state.llm is None:
+
+    # ── LLM init ──────────────────────────────────────────────────────
+    # Re-initialize LLM if config temperature differs from session to enforce accuracy
+    if st.session_state.llm is None or st.session_state.get('temperature') != TEMPERATURE:
         try:
-            # API key is read from environment variable by get_llm()
             st.session_state.llm = get_llm(
                 model_name=DEFAULT_MODEL,
-                temperature=sidebar_settings.get('temperature', 0.1)
+                temperature=TEMPERATURE,
             )
         except Exception as e:
-            st.error(f"Failed to initialize LLM: {str(e)}")
-    
-    # Update selected strategy in session state
-    st.session_state.selected_strategy = sidebar_settings["strategy"]
-    
-    # Update other settings from sidebar
-    st.session_state.chunk_size = sidebar_settings["chunk_size"]
-    st.session_state.chunk_overlap = sidebar_settings["chunk_overlap"]
-    st.session_state.max_docs = sidebar_settings["max_docs"]
-    st.session_state.temperature = sidebar_settings["temperature"]
-    
-    # Render chat interface
+            st.error(f"❌ Failed to initialize LLM: {str(e)}")
+
+    # ── Apply config defaults into session state ───────────────────────
+    st.session_state.selected_strategy = "MultiRAG"
+    st.session_state.chunk_size        = CHUNK_SIZE
+    st.session_state.chunk_overlap     = CHUNK_OVERLAP
+    st.session_state.max_docs          = MAX_RETRIEVAL_DOCS
+    st.session_state.temperature       = TEMPERATURE
+
+    # ── Chat interface ─────────────────────────────────────────────────
     render_chat()
+
 
 if __name__ == "__main__":
     main()

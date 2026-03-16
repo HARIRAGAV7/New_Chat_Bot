@@ -28,8 +28,9 @@ class MultiRAGChain:
         )
 
         self.prompt = PromptTemplate(
-            template="""You are a helpful assistant. Answer only based on the provided context. 
-            If the answer is not in the context, say 'I don't have enough information in the uploaded documents to answer this.'.
+            template="""You are a highly accurate and factual assistant. Answer the question relying ONLY on the provided context. 
+            Do not hallucinate, guess, or use outside knowledge. 
+            If the answer cannot be fully determined from the context, state exactly: 'I don't have enough information in the uploaded documents to answer this accurately.'
 
             Context: {context}
 
